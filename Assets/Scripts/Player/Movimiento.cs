@@ -20,9 +20,18 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 velocity;
     private bool isGrounded;
 
+    // private Animator animator; // Agregar arriba
+
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
+        
+        // animator = GetComponentInChildren<Animator>();
+
+        // if (animator == null)
+        //     Debug.LogError("No se encontró Animator en " + gameObject.name + " ni en sus hijos");
+
     }
 
     void Update()
@@ -45,6 +54,9 @@ public class PlayerMovement : MonoBehaviour
         float z = Input.GetAxis("Vertical");
 
         Vector3 move = transform.right * x + transform.forward * z;
+        
+        // animator.SetFloat("Speed", move.magnitude);
+        // Debug.Log("Speed: " + move.magnitude + " | Animator: " + animator.gameObject.name);
 
         controller.Move(move * speed * Time.deltaTime);
 
