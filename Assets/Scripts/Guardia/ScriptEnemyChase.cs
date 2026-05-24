@@ -1,28 +1,19 @@
 using UnityEngine;
+using UnityEngine.AI;
 
-public class EnemyChase : MonoBehaviour
+public class EnemyAI : MonoBehaviour
 {
     public Transform player;
-    public float speed = 3f;
+
+    private NavMeshAgent agent;
+
+    void Start()
+    {
+        agent = GetComponent<NavMeshAgent>();
+    }
 
     void Update()
     {
-        if (player == null)
-            return;
-
-        Vector3 targetPosition = player.position;
-
-        // Mantener enemigo en el suelo
-        targetPosition.y = transform.position.y;
-
-        // Mover hacia el jugador
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            targetPosition,
-            speed * Time.deltaTime
-        );
-
-        // Mirar al jugador
-        transform.LookAt(targetPosition);
+        agent.SetDestination(player.position);
     }
 }

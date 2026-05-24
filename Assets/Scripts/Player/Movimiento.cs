@@ -1,70 +1,63 @@
+
 using UnityEngine;
 
-public class Movimiento : MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
     [Header("Movimiento")]
-    public float moveSpeed = 5f;
-    private CharacterController controller;
-    private Vector3 direccionMovimiento;
+    public float speed = 6f;
 
-    [Header("Físicas de Gravedad")]
-    private float gravedad = -9.81f;
-    private Vector3 velocidadVertical;
+    [Header("Salto")]
+    public float jumpHeight = 2f;
+    public float gravity = -20f;
 
-    [Header("Detección de Suelo")]
+    [Header("Ground Check")]
     public Transform groundCheck;
-    public float groundDistance = 0.2f;
+    public float groundDistance = 0.4f;
     public LayerMask groundMask;
+
+    private CharacterController controller;
+
+    private Vector3 velocity;
     private bool isGrounded;
 
     void Start()
     {
-        // Obtenemos el Character Controller asignado en el objeto
         controller = GetComponent<CharacterController>();
     }
 
     void Update()
     {
-        // 1. Detectar si el personaje está tocando el suelo
-        if (groundCheck != null)
-        {
-            isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-        }
-        else
-        {
-            // Si no hay un GroundCheck asignado, usamos la propiedad interna del controller
-            isGrounded = controller.isGrounded;
-        }
+        // Detectar suelo
+        isGrounded = Physics.CheckSphere(
+            groundCheck.position,
+            groundDistance,
+            groundMask
+        );
 
-        // 2. Reiniciar la velocidad de caída si ya estamos estables en el suelo
-        if (isGrounded && velocidadVertical.y < 0)
+        // Evitar acumulación de gravedad
+        if (isGrounded && velocity.y < 0)
         {
-            velocidadVertical.y = -2f; // Un valor pequeño negativo para mantenerlo pegado al piso
+            velocity.y = -2f;
         }
 
-        // 3. Capturar teclas WASD / Flechas
-        float moveX = Input.GetAxisRaw("Horizontal");
-        float moveZ = Input.GetAxisRaw("Vertical");
+        // Movimiento
+        float x = Input.GetAxis("Horizontal");
+        float z = Input.GetAxis("Vertical");
 
-        direccionMovimiento = new Vector3(moveX, 0f, moveZ).normalized;
+        Vector3 move = transform.right * x + transform.forward * z;
 
-        // 4. Mover al personaje en los ejes X y Z (Horizontal)
-        if (direccionMovimiento.magnitude >= 0.1f)
+        controller.Move(move * speed * Time.deltaTime);
+
+        // Salto
+        if (Input.GetButtonDown("Jump") && isGrounded)
         {
-            controller.Move(direccionMovimiento * moveSpeed * Time.deltaTime);
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        // 5. Aplicar gravedad constantemente en el eje Y (Vertical)
-        velocidadVertical.y += gravedad * Time.deltaTime;
-        controller.Move(velocidadVertical * Time.deltaTime);
-    }
+        // Gravedad
+        velocity.y += gravity * Time.deltaTime;
 
-    private void OnDrawGizmosSelected()
-    {
-        if (groundCheck != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
-        }
+        controller.Move(velocity * Time.deltaTime);
     }
 }
+

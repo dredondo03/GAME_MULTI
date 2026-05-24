@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour
@@ -5,37 +6,40 @@ public class PlayerHealth : MonoBehaviour
     public int maxLives = 3;
     public int currentLives;
 
-    public Transform respawnPoint;
-
-    private CharacterController controller;
-
     void Start()
     {
         currentLives = maxLives;
-        controller = GetComponent<CharacterController>();
     }
 
-    public void TakeDamage()
+    public void TakeDamage(int damage)
     {
-        currentLives--;
+        currentLives -= damage;
 
-        Debug.Log("Vidas restantes: " + currentLives);
-
-        controller.enabled = false;
-        transform.position = respawnPoint.position;
-        controller.enabled = true;
+        Debug.Log("Vidas: " + currentLives);
 
         if (currentLives <= 0)
         {
-            Debug.Log("GAME OVER");
+            Die();
         }
     }
 
-    public void Heal()
+    public void AddLife(int amount)
     {
-        if (currentLives < maxLives)
+        currentLives += amount;
+
+        if (currentLives > maxLives)
         {
-            currentLives++;
+            currentLives = maxLives;
         }
+
+        Debug.Log("Vida actual: " + currentLives);
+    }
+
+    void Die()
+    {
+        Debug.Log("Jugador muerto");
+
+        // Reiniciar escena o respawn
     }
 }
+

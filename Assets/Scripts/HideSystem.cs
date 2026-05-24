@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 public class HideSystem : MonoBehaviour
@@ -39,4 +38,3 @@ public class HideSystem : MonoBehaviour
         }
     }
 }
-
