@@ -1,75 +1,71 @@
-
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class MovimientoJugador : MonoBehaviour
 {
-    [Header("Movimiento")]
-    public float speed = 6f;
-
-    [Header("Salto")]
-    public float jumpHeight = 2f;
-    public float gravity = -20f;
-
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundDistance = 0.4f;
-    public LayerMask groundMask;
-
+    [Header("Movimiento Horizontal")]
+    public float velocidad = 5.0f;
     private CharacterController controller;
 
-    private Vector3 velocity;
-    private bool isGrounded;
+    [Header("Gravedad y Salto")]
+    public float fuerzaSalto = 3.0f;
+    public float gravedad = -9.81f;
+    private Vector3 velocidadVertical; 
 
-    // private Animator animator; // Agregar arriba
+    [Header("Detección de Suelo Profesional")]
+    [Tooltip("Arrastra aquí un objeto vacío posicionado exactamente en los pies del jugador")]
+    public Transform detectorSuelo;
+    
+    [Tooltip("Radio de la esfera de detección (0.2 o 0.3 suele ser ideal)")]
+    public float radioSuelo = 0.3f;
+    
+    [Tooltip("Capa (Layer) asignada a las plataformas y al suelo de tu mapa")]
+    public LayerMask capaSuelo;
 
+    // Esta variable reemplazará al inestable controller.isGrounded
+    private bool estaEnElSuelo;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        
-        // animator = GetComponentInChildren<Animator>();
-
-        // if (animator == null)
-        //     Debug.LogError("No se encontró Animator en " + gameObject.name + " ni en sus hijos");
-
     }
 
     void Update()
     {
-        // Detectar suelo
-        isGrounded = Physics.CheckSphere(
-            groundCheck.position,
-            groundDistance,
-            groundMask
-        );
+        // 1. DETECCIÓN MANUAL DE SUELO
+        // Crea una esfera invisible. Si colisiona con la capa elegida, da 'true'.
+        estaEnElSuelo = Physics.CheckSphere(detectorSuelo.position, radioSuelo, capaSuelo);
 
-        // Evitar acumulación de gravedad
-        if (isGrounded && velocity.y < 0)
+        // 2. MOVIMIENTO HORIZONTAL
+        float moverHorizontal = Input.GetAxis("Horizontal");
+        float moverVertical = Input.GetAxis("Vertical");
+
+        Vector3 movimientoHorizontal = transform.right * moverHorizontal + transform.forward * moverVertical;
+        controller.Move(movimientoHorizontal * velocidad * Time.deltaTime);
+
+        // 3. CONTROL DE GRAVEDAD
+        if (estaEnElSuelo && velocidadVertical.y < 0)
         {
-            velocity.y = -2f;
+            velocidadVertical.y = -2f; // Mantiene al jugador pegado al suelo de forma firme
         }
 
-        // Movimiento
-        float x = Input.GetAxis("Horizontal");
-        float z = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * x + transform.forward * z;
-        
-        // animator.SetFloat("Speed", move.magnitude);
-        // Debug.Log("Speed: " + move.magnitude + " | Animator: " + animator.gameObject.name);
-
-        controller.Move(move * speed * Time.deltaTime);
-
-        // Salto
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // 4. CONTROL DEL SALTO (¡Ahora sí responderá siempre!)
+        if (Input.GetButtonDown("Jump") && estaEnElSuelo)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            velocidadVertical.y = Mathf.Sqrt(fuerzaSalto * -2f * gravedad);
         }
 
-        // Gravedad
-        velocity.y += gravity * Time.deltaTime;
+        // Aplicamos la gravedad
+        velocidadVertical.y += gravedad * Time.deltaTime;
+        controller.Move(velocidadVertical * Time.deltaTime);
+    }
 
-        controller.Move(velocity * Time.deltaTime);
+    // Esto te permite ver la esfera de detección en la ventana de Escena (Editor) para calibrarla
+    void OnDrawGizmosSelected()
+    {
+        if (detectorSuelo != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(detectorSuelo.position, radioSuelo);
+        }
     }
 }
-
