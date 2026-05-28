@@ -4,6 +4,7 @@ public class MovimientoJugador : MonoBehaviour
 {
     [Header("Movimiento Horizontal")]
     public float velocidad = 5.0f;
+    public float velocidadRotacion = 10.0f; // <- NUEVO: Controla qué tan rápido gira el personaje
     private CharacterController controller;
 
     [Header("Gravedad y Salto")]
@@ -21,7 +22,6 @@ public class MovimientoJugador : MonoBehaviour
     [Tooltip("Capa (Layer) asignada a las plataformas y al suelo de tu mapa")]
     public LayerMask capaSuelo;
 
-    // Esta variable reemplazará al inestable controller.isGrounded
     private bool estaEnElSuelo;
 
     void Start()
@@ -32,26 +32,38 @@ public class MovimientoJugador : MonoBehaviour
     void Update()
     {
         // 1. DETECCIÓN MANUAL DE SUELO
-        // Crea una esfera invisible. Si colisiona con la capa elegida, da 'true'.
         estaEnElSuelo = Physics.CheckSphere(detectorSuelo.position, radioSuelo, capaSuelo);
 
         // 2. MOVIMIENTO HORIZONTAL
         float moverHorizontal = Input.GetAxis("Horizontal");
         float moverVertical = Input.GetAxis("Vertical");
 
-        Vector3 movimientoHorizontal = transform.right * moverHorizontal + transform.forward * moverVertical;
-        controller.Move(movimientoHorizontal * velocidad * Time.deltaTime);
+        // Creamos el vector de dirección basado en los inputs
+        Vector3 direccionMovimiento = new Vector3(moverHorizontal, 0, moverVertical).normalized;
+
+        // Si el jugador está presionando alguna tecla de movimiento...
+        if (direccionMovimiento.magnitude >= 0.1f)
+        {
+            // NUEVO: Calculamos la rotación hacia la dirección del movimiento
+            Quaternion rotacionObjetivo = Quaternion.LookRotation(direccionMovimiento);
+            
+            // NUEVO: Giramos suavemente desde la rotación actual a la rotación objetivo
+            transform.rotation = Quaternion.Slerp(transform.rotation, rotacionObjetivo, velocidadRotacion * Time.deltaTime);
+
+            // Movemos al jugador hacia adelante (su "adelante" local ahora coincide con la dirección)
+            controller.Move(direccionMovimiento * velocidad * Time.deltaTime);
+        }
 
         // 3. CONTROL DE GRAVEDAD
         if (estaEnElSuelo && velocidadVertical.y < 0)
         {
-            velocidadVertical.y = -2f; // Mantiene al jugador pegado al suelo de forma firme
+            velocidadVertical.y = -2f; 
         }
 
-        // 4. CONTROL DEL SALTO (¡Ahora sí responderá siempre!)
+        // 4. CONTROL DEL SALTO
         if (Input.GetButtonDown("Jump") && estaEnElSuelo)
         {
-            velocidadVertical.y = Mathf.Sqrt(fuerzaSalto * -2f * gravedad);
+            velocidadVertical.y = Mathf.Sqrt(fuerzaSalto * -2f * gravityVal());
         }
 
         // Aplicamos la gravedad
@@ -59,7 +71,9 @@ public class MovimientoJugador : MonoBehaviour
         controller.Move(velocidadVertical * Time.deltaTime);
     }
 
-    // Esto te permite ver la esfera de detección en la ventana de Escena (Editor) para calibrarla
+    // Método auxiliar para evitar conflictos de signos en la fórmula matemática del salto
+    private float gravityVal() => gravedad > 0 ? -gravedad : gravedad;
+
     void OnDrawGizmosSelected()
     {
         if (detectorSuelo != null)

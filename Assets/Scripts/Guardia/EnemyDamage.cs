@@ -2,16 +2,21 @@ using UnityEngine;
 
 public class EnemyDamage : MonoBehaviour
 {
-    public int damage = 1;
+    [Header("Configuración de Daño")]
+    public int damageAmount = 1;
 
+    // Al usar "Is Trigger" en el Collider, se activa esta función tridimensional
     private void OnTriggerEnter(Collider other)
     {
-        PlayerHealth player =
-            other.GetComponent<PlayerHealth>();
-
-        if (player != null)
+        // ¿Lo que entró en el área del enemigo es el jugador?
+        if (other.CompareTag("Player"))
         {
-            player.TakeDamage(damage);
+            PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(damageAmount);
+            }
         }
     }
 }

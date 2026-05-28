@@ -1,24 +1,27 @@
 using UnityEngine;
-using UnityEngine.AI; // Obligatorio para usar NavMesh
+using UnityEngine.AI; // Obligatorio para NavMesh
 
-public class EnemigoSeguidor : MonoBehaviour
+public class EnemigoGuardian : MonoBehaviour
 {
     private Transform objetivoPlayer;
-    private NavMeshAgent agente; // Referencia al componente de IA de Unity
+    private NavMeshAgent agente;
+
+    [Header("Configuración de Alerta")]
+    [Tooltip("La distancia en metros a la que el enemigo puede verte")]
+    public float rangoDeVision = 8.0f;
     
     // Estados del enemigo
+    private bool jugadorDetectado = false;
     private bool jugadorEscondido = false;
     private Vector3 ultimaPosicionConocida;
     private bool buscandoUltimaPosicion = false;
     private bool alejandose = false;
 
     [Header("Comportamiento de Búsqueda")]
-    [Tooltip("Qué tan lejos se irá el enemigo a buscar después de perderte de vista")]
     public float radioDeAlejamiento = 6.0f;
 
     void Start()
     {
-        // Obtenemos el componente NavMesh Agent del enemigo
         agente = GetComponent<NavMeshAgent>();
 
         GameObject jugador = GameObject.FindWithTag("Player");
@@ -30,45 +33,69 @@ public class EnemigoSeguidor : MonoBehaviour
         {
             Debug.LogWarning("No se encontró ningún objeto con el tag 'Player' en la escena.");
         }
+
+        // Al iniciar, como es estático, le decimos al NavMesh que no se mueva a ningún lado
+        if (agente != null)
+        {
+            agente.isStopped = true; 
+        }
     }
 
     void Update()
     {
         if (objetivoPlayer == null || agente == null) return;
 
-        // ESTADO 1: El jugador está libre. El enemigo lo persigue en tiempo real respetando el mapa
+        // Calculamos la distancia actual entre este enemigo y tu personaje
+        float distanciaAlJugador = Vector3.Distance(transform.position, objetivoPlayer.position);
+
+        // Si el jugador no ha sido detectado aún, el enemigo vigila en modo estático
+        if (!jugadorDetectado)
+        {
+            // En cuanto el jugador entra en el rango de visión, se activa la persecución
+            if (distanciaAlJugador <= rangoDeVision && !jugadorEscondido)
+            {
+                jugadorDetectado = true;
+                agente.isStopped = false; // Le permitimos caminar al NavMesh
+                Debug.Log("¡El Guardia te ha visto! Iniciando persecución.");
+            }
+            return; // Mientras no te vea, frena el código aquí para quedarse quieto
+        }
+
+        // ==========================================
+        // LÓGICA DE MOVIMIENTO (Igual al primer enemigo)
+        // ==========================================
+        
+        // ESTADO 1: Te vio y te persigue en tiempo real
         if (!jugadorEscondido)
         {
             agente.SetDestination(objetivoPlayer.position);
         }
-        // ESTADO 2: El jugador se escondió. El enemigo va al escondite usando el camino inteligente
+        // ESTADO 2: Te escondiste, va a revisar el escondite
         else if (buscandoUltimaPosicion)
         {
             agente.SetDestination(ultimaPosicionConocida);
 
-            // Si el agente llega cerca del escondite, pasa a buscar a otra parte
             if (!agente.pathPending && agente.remainingDistance <= 0.8f)
             {
                 buscandoUltimaPosicion = false;
                 CalcularPuntoAleatorioValido();
             }
         }
-        // ESTADO 3: El enemigo no te encontró y se aleja a una zona segura
+        // ESTADO 3: No te encontró y se aleja a patrullar
         else if (alejandose)
         {
-            // Si llega al punto de alejamiento, se detiene
             if (!agente.pathPending && agente.remainingDistance <= 0.8f)
             {
                 alejandose = false;
-                Debug.Log("El enemigo se alejó con éxito sin salirse del mapa.");
+                jugadorDetectado = false; // Vuelve a su estado de alerta estático en la nueva zona
+                agente.isStopped = true;  // Se queda quieto de nuevo
+                Debug.Log("El guardia perdió el rastro y volvió a ponerse en guardia estática.");
             }
         }
     }
 
-    // Calcula un punto aleatorio que sea REALMENTE caminable y no un vacío o una pared
     void CalcularPuntoAleatorioValido()
     {
-        // Generamos un punto al azar a la redonda
         Vector2 desplazamientoAleatorio = Random.insideUnitCircle.normalized * radioDeAlejamiento;
         Vector3 puntoTentativo = new Vector3(
             transform.position.x + desplazamientoAleatorio.x,
@@ -77,39 +104,35 @@ public class EnemigoSeguidor : MonoBehaviour
         );
 
         NavMeshHit hit;
-        
-        // Aumentamos el rango de búsqueda (de 1.0f a 3.0f) para que si el punto cae dentro de un Mesh Collider 
-        // de una pared, la IA busque el punto caminable más cercano en el suelo de forma inteligente.
         if (NavMesh.SamplePosition(puntoTentativo, out hit, 3.0f, NavMesh.AllAreas))
         {
             agente.SetDestination(hit.position);
             alejandose = true;
-            Debug.Log("El enemigo encontró un punto seguro en el suelo: " + hit.position);
-        }
-        else
-        {
-            // Si por alguna razón el punto aleatorio cayó en un vacío total, intentamos de nuevo en el siguiente frame
-            alejandose = false;
-            buscandoUltimaPosicion = false;
-            Debug.LogWarning("No se encontró suelo firme en esa dirección, el enemigo recalculará.");
         }
     }
 
-    // Se activa desde el script del jugador al presionar 'H'
+    // Funciones de comunicación con el script PlayerHide
     public void PerderDeVistaALJugador(Vector3 posicionDelJugador)
     {
+        if (!jugadorDetectado) return; // Si nunca te vio, ignora el evento
         jugadorEscondido = true;
         buscandoUltimaPosicion = true;
         alejandose = false;
-        
         ultimaPosicionConocida = posicionDelJugador;
     }
 
-    // Se activa desde el script del jugador al salir del escondite
     public void VolverAVerAlJugador()
     {
         jugadorEscondido = false;
         buscandoUltimaPosicion = false;
         alejandose = false;
+    }
+
+    // DIBUJAR EL RANGO EN LA VENTANA DE ESCENA
+    // Esto es puramente visual para ayudarte a ti como desarrollador a ver el radio en 3D
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, rangoDeVision);
     }
 }
