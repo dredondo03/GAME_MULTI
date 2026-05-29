@@ -33,10 +33,11 @@ public class PlayerHealth : MonoBehaviour
         currentLives -= damage;
         currentLives = Mathf.Max(currentLives, 0); // Nunca menor a 0
         OnLivesChanged?.Invoke(currentLives);       // Notifica a la UI
-        Debug.Log("El jugador recibió daño. Vidas restantes: " + currentLives);
 
         if (currentLives <= 0)
             Die();
+        else
+            StartCoroutine(RespawnRoutine());
     }
 
     public void Heal(int amount)
@@ -63,12 +64,13 @@ public class PlayerHealth : MonoBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        gameObject.SetActive(false);
         yield return new WaitForSeconds(respawnDelay);
-
-        spawnManager.TeletransportarAlPuntoSeguro(); // Usa tu script existente
         
+        // Primero teletransportar, luego reactivar
+        spawnManager.TeletransportarAlPuntoSeguro();
+        
+        gameObject.SetActive(false);
         gameObject.SetActive(true);
-        Debug.Log("Respawn en último checkpoint guardado.");
+        
     }
 }   
