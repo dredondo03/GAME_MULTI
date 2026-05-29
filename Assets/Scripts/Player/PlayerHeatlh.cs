@@ -1,4 +1,6 @@
 using UnityEngine;
+using System;
+using System.Collections;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -6,46 +8,67 @@ public class PlayerHealth : MonoBehaviour
     public int maxLives = 3;
     private int currentLives;
 
+    [Header("Respawn")]
+    public float respawnDelay = 1.5f;
+    public PlayerSpawnManager spawnManager;     // Asignar en el Inspector
+    
+    [Header("Game Over UI")]
+    public GameOverUI gameOverUI;
+    
+    // Evento que la UI escucha para actualizarse
+    public event Action<int> OnLivesChanged;
+
+    // Propiedad pública de solo lectura para que la UI acceda al valor
+    public int CurrentLives => currentLives;
+
     void Start()
     {
-        // El jugador inicia con el máximo de vidas permitido
         currentLives = maxLives;
+        OnLivesChanged?.Invoke(currentLives); // Notifica a la UI al inicio
         Debug.Log("Vidas iniciales: " + currentLives);
     }
 
-    // El enemigo llamará a esta función para restar vida
     public void TakeDamage(int damage)
     {
         currentLives -= damage;
+        currentLives = Mathf.Max(currentLives, 0); // Nunca menor a 0
+        OnLivesChanged?.Invoke(currentLives);       // Notifica a la UI
         Debug.Log("El jugador recibió daño. Vidas restantes: " + currentLives);
 
         if (currentLives <= 0)
-        {
             Die();
-        }
     }
 
-    // El objeto del mapa llamará a esta función para sumar vida
     public void Heal(int amount)
     {
-        // Si ya está lleno, no hace nada
         if (currentLives >= maxLives)
         {
             Debug.Log("Vida ya está al máximo.");
             return;
         }
 
-        currentLives += amount;
-        
-        // Evitamos que las vidas superen el máximo establecido
-        currentLives = Mathf.Min(currentLives, maxLives);
+        currentLives = Mathf.Min(currentLives + amount, maxLives);
+        OnLivesChanged?.Invoke(currentLives); // Notifica a la UI
         Debug.Log("¡Vida recuperada! Vidas actuales: " + currentLives);
     }
 
     private void Die()
     {
-        Debug.Log("¡Game Over! El personaje se quedó sin vidas.");
-        // Desactivamos al personaje (puedes cambiar esto por tu lógica de reinicio)
-        gameObject.SetActive(false); 
+        Debug.Log("¡Te atrapo el guardia!");
+        if (gameOverUI != null)
+            gameOverUI.ShowGameOver();
+        else
+            gameObject.SetActive(false);
     }
-}
+
+    private IEnumerator RespawnRoutine()
+    {
+        gameObject.SetActive(false);
+        yield return new WaitForSeconds(respawnDelay);
+
+        spawnManager.TeletransportarAlPuntoSeguro(); // Usa tu script existente
+        
+        gameObject.SetActive(true);
+        Debug.Log("Respawn en último checkpoint guardado.");
+    }
+}   
