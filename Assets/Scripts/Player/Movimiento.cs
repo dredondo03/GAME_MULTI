@@ -4,7 +4,7 @@ public class MovimientoJugador : MonoBehaviour
 {
     [Header("Movimiento Horizontal")]
     public float velocidad = 5.0f;
-    public float velocidadRotacion = 10.0f; // <- NUEVO: Controla qué tan rápido gira el personaje
+    public float velocidadRotacion = 8.0f; // <- NUEVO: Controla qué tan rápido gira el personaje
     private CharacterController controller;
 
     [Header("Gravedad y Salto")]
@@ -22,6 +22,9 @@ public class MovimientoJugador : MonoBehaviour
     [Tooltip("Capa (Layer) asignada a las plataformas y al suelo de tu mapa")]
     public LayerMask capaSuelo;
 
+    [Header("Cámara")]
+    public Transform camaraPrincipal; // Arrastra la Main Camera en el Inspector
+    
     private bool estaEnElSuelo;
 
     void Start()
@@ -31,42 +34,37 @@ public class MovimientoJugador : MonoBehaviour
 
     void Update()
     {
-        // 1. DETECCIÓN MANUAL DE SUELO
         estaEnElSuelo = Physics.CheckSphere(detectorSuelo.position, radioSuelo, capaSuelo);
 
-        // 2. MOVIMIENTO HORIZONTAL
         float moverHorizontal = Input.GetAxis("Horizontal");
         float moverVertical = Input.GetAxis("Vertical");
 
-        // Creamos el vector de dirección basado en los inputs
-        Vector3 direccionMovimiento = new Vector3(moverHorizontal, 0, moverVertical).normalized;
+        // Dirección relativa a donde mira la cámara
+        Vector3 adelanteCamara = camaraPrincipal.forward;
+        Vector3 derechaCamara = camaraPrincipal.right;
 
-        // Si el jugador está presionando alguna tecla de movimiento...
+        // Ignoramos el eje Y para que no se mueva hacia arriba/abajo
+        adelanteCamara.y = 0;
+        derechaCamara.y = 0;
+        adelanteCamara.Normalize();
+        derechaCamara.Normalize();
+
+        Vector3 direccionMovimiento = (adelanteCamara * moverVertical + derechaCamara * moverHorizontal).normalized;
+
         if (direccionMovimiento.magnitude >= 0.1f)
         {
-            // NUEVO: Calculamos la rotación hacia la dirección del movimiento
             Quaternion rotacionObjetivo = Quaternion.LookRotation(direccionMovimiento);
-            
-            // NUEVO: Giramos suavemente desde la rotación actual a la rotación objetivo
             transform.rotation = Quaternion.Slerp(transform.rotation, rotacionObjetivo, velocidadRotacion * Time.deltaTime);
-
-            // Movemos al jugador hacia adelante (su "adelante" local ahora coincide con la dirección)
             controller.Move(direccionMovimiento * velocidad * Time.deltaTime);
         }
 
-        // 3. CONTROL DE GRAVEDAD
+        // Gravedad y salto igual que antes
         if (estaEnElSuelo && velocidadVertical.y < 0)
-        {
-            velocidadVertical.y = -2f; 
-        }
+            velocidadVertical.y = -2f;
 
-        // 4. CONTROL DEL SALTO
         if (Input.GetButtonDown("Jump") && estaEnElSuelo)
-        {
             velocidadVertical.y = Mathf.Sqrt(fuerzaSalto * -2f * gravityVal());
-        }
 
-        // Aplicamos la gravedad
         velocidadVertical.y += gravedad * Time.deltaTime;
         controller.Move(velocidadVertical * Time.deltaTime);
     }

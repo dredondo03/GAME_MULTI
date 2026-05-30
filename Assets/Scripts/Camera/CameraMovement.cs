@@ -3,17 +3,32 @@ using UnityEngine;
 public class CameraMovement : MonoBehaviour
 {
     [Header("Configuración")]
-    public float moveSpeed = 3f;
+    public float rotacionSpeed = 100f; // Velocidad de rotación alrededor del jugador
 
-    void Update()
+    private Transform objetivo;
+    private float distancia;
+
+    void Start()
     {
-        // Solo mueve la cámara mientras se mantenga presionado el clic derecho
+        GameObject jugador = GameObject.FindWithTag("Player");
+        if (jugador != null)
+        {
+            objetivo = jugador.transform;
+            distancia = Vector3.Distance(transform.position, objetivo.position);
+        }
+    }
+
+    void LateUpdate()
+    {
+        if (objetivo == null) return;
+
+        // Solo rota mientras se mantenga clic derecho
         if (Input.GetMouseButton(1))
         {
             float mouseX = Input.GetAxis("Mouse X");
-            float mouseY = Input.GetAxis("Mouse Y");
 
-            transform.position += new Vector3(mouseX, mouseY, 0) * moveSpeed * Time.deltaTime;
+            // Rota la cámara alrededor del jugador en el eje Y
+            transform.RotateAround(objetivo.position, Vector3.up, mouseX * rotacionSpeed * Time.deltaTime);
         }
     }
 }
